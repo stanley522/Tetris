@@ -18,13 +18,15 @@ public class Panel extends JPanel implements ActionListener {
     int screenWidth = 600;
     int screenHeight = 600;
     int unitSize = 25;
-    int marginLeft = unitSize;
-    int marginBot = unitSize;
-    int refreshRate = 50;
-    int dropRate = 5;
-    int ticks = 0;
     int rowCount = 18;
     int columnCount = 10;
+    int marginLeft = unitSize * 7;
+    int marginBot = unitSize;
+    int infoColumnMargin = marginLeft + (columnCount + 1) * unitSize;
+    int baseRefreshRate = 50;
+    int refreshRate = baseRefreshRate;
+    int dropRate = 5;
+    int ticks = 0;
     Timer timer;
     Block block;
     boolean gameRunning = false;
@@ -33,6 +35,10 @@ public class Panel extends JPanel implements ActionListener {
     private int score;
     Random random = new Random();
     private boolean keyPressed = false;
+    private Block nextBlock;
+    private Block savedBlock;
+    private boolean usedSave;
+    private int combo;
 
     public Panel() {
         setPreferredSize(new Dimension(screenWidth, screenHeight));
@@ -55,7 +61,18 @@ public class Panel extends JPanel implements ActionListener {
             drawGridLines(graphics);
             drawBlock(graphics);
             drawStableBlocks(graphics);
+            drawSavedBlock(graphics);
+            drawNextBlock(graphics);
+            drawScore(graphics);
+            drawSpeed(graphics);
         } else {
+            drawGridLines(graphics);
+            drawBlock(graphics);
+            drawStableBlocks(graphics);
+            drawSavedBlock(graphics);
+            drawNextBlock(graphics);
+            drawScore(graphics);
+            drawSpeed(graphics);
             gameOverGraphics(graphics);
         }
     }
@@ -109,7 +126,51 @@ public class Panel extends JPanel implements ActionListener {
         }
     }
 
+    private void drawSavedBlock(Graphics graphics) {
+        graphics.setColor(new Color(200, 230, 230));
+        graphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
+        var saveBlockMargin = unitSize;
+        graphics.drawString("Saved Block", saveBlockMargin, screenHeight - (unitSize * 18));
+        if (savedBlock == null)
+            return;
+        graphics.setColor(savedBlock.color);
+        for (int[] block : savedBlock.blockRotations[0]) {
+            graphics.fillRect(saveBlockMargin + unitSize * 2 + unitSize * block[0],
+                    screenHeight - (unitSize * 15 + unitSize * block[1]), unitSize, unitSize);
+        }
+    }
+    private void drawNextBlock(Graphics graphics) {
+        graphics.setColor(new Color(200, 230, 230));
+        graphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
+        graphics.drawString("Next Block", infoColumnMargin, screenHeight - (unitSize * 18));
+        if (nextBlock == null)
+            return;
+        graphics.setColor(nextBlock.color);
+        for (int[] block : nextBlock.blockRotations[0]) {
+            graphics.fillRect(infoColumnMargin + unitSize * 2 + unitSize * block[0],
+                    screenHeight - (unitSize * 15 + unitSize * block[1]), unitSize, unitSize);
+        }
+    }
+
+    private void drawScore(Graphics graphics) {
+        graphics.setColor(new Color(200, 230, 230));
+        graphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
+        graphics.drawString("Score", infoColumnMargin, screenHeight - (unitSize * 12));
+        graphics.setColor(new Color(220, 180, 120));
+        graphics.drawString("" + score, infoColumnMargin, screenHeight - (unitSize * 10));
+    }
+    private void drawSpeed(Graphics graphics) {
+        graphics.setColor(new Color(200, 230, 230));
+        graphics.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
+        graphics.drawString("Speed", infoColumnMargin, screenHeight - (unitSize * 8));
+        graphics.setColor(new Color(220, 180, 120));
+        graphics.drawString("" + (51-refreshRate), infoColumnMargin, screenHeight - (unitSize * 6));
+    }
+
     public void startGame() {
+        refreshRate = baseRefreshRate;
+        timer.setDelay(refreshRate);
+        score = 0;
         setStableBlocks();
         fillBlockList();
         newBlock();
@@ -129,12 +190,34 @@ public class Panel extends JPanel implements ActionListener {
     }
 
     public void newBlock() {
-        var blockType = blockList.get(random.nextInt(7 * 6 * 5 * 4 * 3 * 2 * 1) % blockList.size());
-        block = BlockFactory.newBlock(blockType);
+        if (nextBlock == null)
+            chooseNextBlock();
+        block = nextBlock;
         block.position = new int[]{((columnCount - 1) / 2), rowCount};
+        chooseNextBlock();
+    }
 
+    public void chooseNextBlock() {
+        if(blockList.size()==0)
+            fillBlockList();
+        var blockType = blockList.get(random.nextInt(7 * 6 * 5 * 4 * 3 * 2 * 1) % blockList.size());
+        blockList.remove(blockType);
+        nextBlock = BlockFactory.newBlock(blockType);
+    }
 
-        //block = blockList
+    private void saveBlock() {
+        if(usedSave)
+            return;
+        usedSave = true;
+        if (savedBlock == null) {
+            savedBlock = BlockFactory.newBlock(block.blockType);
+            newBlock();
+        return;
+        }
+        var newBlock = BlockFactory.newBlock(savedBlock.blockType);
+        savedBlock = BlockFactory.newBlock(block.blockType);
+        block = newBlock;
+        block.position = new int[]{((columnCount - 1) / 2), rowCount};
     }
 
     public void fillBlockList() {
@@ -148,7 +231,8 @@ public class Panel extends JPanel implements ActionListener {
             return;
         }
         // collides
-        stablizeBlocks();
+        usedSave = false;
+        stabilizeBlocks();
 
         // hits top when collides
         if (collideTop(block.occupiedBlocks())) {
@@ -186,7 +270,7 @@ public class Panel extends JPanel implements ActionListener {
         return false;
     }
 
-    public void stablizeBlocks() {
+    public void stabilizeBlocks() {
         for (var occupiedBlock : block.occupiedBlocks()) {
             if (occupiedBlock[1] >= rowCount)
                 return;
@@ -209,7 +293,14 @@ public class Panel extends JPanel implements ActionListener {
             if (clear)
                 clearRows.add(i);
         }
+        if (clearRows.size() == 0) {
+            combo = 0;
+            return;
+        }
+        combo++;
         dropClearRows(clearRows);
+        addClearRowScore(clearRows.size());
+        increaseSpeed();
     }
 
     public void dropClearRows(ArrayList<Integer> rows) {
@@ -240,21 +331,26 @@ public class Panel extends JPanel implements ActionListener {
         }
     }
 
+
+    public void addClearRowScore(int count) {
+        score += clearRowScore(count);
+    }
+
+    public int clearRowScore(int count) {
+        var addedScore = 0;
+        if (combo > 0)
+            addedScore += ((combo + 2) * (combo)) * 200;
+        addedScore += (count * (count + 1)) * 500;
+        return (addedScore + score * addedScore / 1000000) / 100 * 100;
+    }
+
+    private void increaseSpeed() {
+        refreshRate = (int)(baseRefreshRate - Math.sqrt(score) / 15);
+        timer.setDelay(refreshRate);
+    }
+
     private boolean testRotate() {
         return !collide(block.occupiedBlocksAfterRotate());
-    }
-
-
-    public void addClearRowScore() {
-        score += clearRowScore();
-    }
-
-    public int clearRowScore() {
-        return 0;
-    }
-
-    public boolean isGameOver() {
-        return false;
     }
 
     public void gameOver() {
@@ -322,9 +418,14 @@ public class Panel extends JPanel implements ActionListener {
                         break;
                     startGame();
                 }
+                case KeyEvent.VK_SHIFT: {
+                    saveBlock();
+                    break;
+                }
             }
         }
     }
+
 
 }
 

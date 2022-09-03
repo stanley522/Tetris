@@ -8,7 +8,7 @@ public class SBlock extends Block {
                 {{1, 1}, {0, 1}, {0, 0}, {-1, 0}},
                 {{0, 1}, {0, 0}, {1, 0}, {1, -1}}
         };
-        blockType = BlockType.I_Block;
+        blockType = BlockType.S_Block;
         color = new Color(200, 50, 50);
     }
 }

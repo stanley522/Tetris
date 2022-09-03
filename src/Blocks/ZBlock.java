@@ -8,7 +8,7 @@ public class ZBlock extends Block {
                 {{-1, 1}, {0, 1}, {0, 0}, {1, 0}},
                 {{1, 1}, {1, 0}, {0, 0}, {0, -1}}
         };
-        blockType = BlockType.I_Block;
+        blockType = BlockType.Z_Block;
         color = new Color(50, 200, 100);
     }
 }

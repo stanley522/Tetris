@@ -10,7 +10,7 @@ public class LBlock extends Block {
                 {{0, 1}, {1, 1}, {1, 0}, {1, -1}},
                 {{1, 1}, {1, 0}, {0, 0}, {-1, 0}}
         };
-        blockType = BlockType.I_Block;
+        blockType = BlockType.L_Block;
         color = new Color(250,100,100);
     }
 }

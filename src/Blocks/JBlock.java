@@ -10,7 +10,7 @@ public class JBlock extends Block {
                 {{-1, -2}, {-1, -1}, {-1, 0}, {0, 0}},
                 {{-2, 0}, {-1, 0}, {0, 0}, {0, -1}}
         };
-        blockType = BlockType.I_Block;
+        blockType = BlockType.J_Block;
         color =new Color(50,50,200);
     }
 }
